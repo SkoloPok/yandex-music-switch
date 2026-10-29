@@ -35,8 +35,8 @@ LDFLAGS   = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir 
 
 LIBS := -lSDL2_mixer -lSDL2_ttf -lSDL2_image -lSDL2_gfx \
         -lSDL2 -lEGL -lGLESv2 -lglapi -ldrm_nouveau \
-        -lfreetype -lpng -ljpeg -lwebp -lbz2 \
-        -lvorbisidec -logg -lmpg123 -lFLAC -lopusfile -lopus \
+        -lfreetype -lharfbuzz -lpng -ljpeg -lwebp -lbz2 \
+        -lmodplug -lvorbisidec -logg -lmpg123 -lFLAC -lopusfile -lopus \
         -lcurl -lmbedtls -lmbedx509 -lmbedcrypto \
         -lnx -lz -lm
 
@@ -102,7 +102,7 @@ $(OUTPUT).nro: $(OUTPUT).elf $(OUTPUT).nacp
 
 $(OUTPUT).elf: $(OFILES)
 	$(SILENTMSG) linking $(notdir $@)
-	$(SILENTCMD)$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
+	$(SILENTCMD)$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) -Wl,--start-group $(LIBS) -Wl,--end-group -o $@
 
 $(OUTPUT).nacp:
 	@nacptool --create "$(APP_TITLE)" "$(APP_AUTHOR)" "$(APP_VERSION)" $@
