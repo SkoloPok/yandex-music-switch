@@ -18,29 +18,21 @@ jobs:
 
       - name: Install Switch dependencies
         run: |
-          dkp-pacman -Syu --noconfirm
-          dkp-pacman -S --noconfirm \
-            switch-dev \
+          dkp-pacman -S --needed --noconfirm \
             switch-sdl2 \
             switch-sdl2_mixer \
             switch-sdl2_ttf \
             switch-sdl2_image \
             switch-sdl2_gfx \
-            switch-harfbuzz \
-            switch-libmodplug \
             switch-curl \
             switch-mbedtls \
             switch-mpg123 \
             switch-flac \
             switch-libvorbisidec \
             switch-opusfile \
-            switch-libogg \
-            switch-libopus \
             switch-freetype \
             switch-libpng \
-            switch-libjpeg-turbo \
-            switch-libwebp \
-            switch-bzip2
+            switch-libjpeg-turbo || true
 
       - name: Build project
         run: make
