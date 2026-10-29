@@ -1,0 +1,23 @@
+# Build artifacts
+build/
+*.nro
+*.elf
+*.nacp
+*.map
+*.o
+*.d
+
+# Sensitive token files
+sdmc/
+token.txt
+*.token
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
