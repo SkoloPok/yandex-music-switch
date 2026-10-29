@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <cstdlib>
 
 const std::string YandexMusicAPI::BASE_URL = "https://api.music.yandex.net";
 const std::string YandexMusicAPI::SIGN_SALT = "XGRlBW9FXlekgbPrRHuSiA";
@@ -70,7 +71,8 @@ static int64_t getInt(const std::string& json, const std::string& key) {
     // Может быть число или строка-число
     if (json[pos] == '"') {
         std::string s = getString(json, key);
-        try { return std::stoll(s); } catch (...) { return 0; }
+        if (s.empty()) return 0;
+        return strtoll(s.c_str(), nullptr, 10);
     }
 
     std::string numStr;
@@ -78,7 +80,7 @@ static int64_t getInt(const std::string& json, const std::string& key) {
         numStr += json[pos++];
     }
     if (numStr.empty()) return 0;
-    try { return std::stoll(numStr); } catch (...) { return 0; }
+    return strtoll(numStr.c_str(), nullptr, 10);
 }
 
 // Извлечь булево значение
