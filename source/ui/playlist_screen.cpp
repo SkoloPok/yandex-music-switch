@@ -15,7 +15,7 @@ void PlaylistScreen::setPlaylist(const Playlist& playlist) {
 }
 
 void PlaylistScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
-    if (loading_) return;
+    if (loading_ || isDownloading_) return;
 
     // B — назад
     if (kDown & HidNpadButton_B) {
@@ -48,6 +48,16 @@ void PlaylistScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
         }
     }
 
+    // X — скачать выбранный трек
+    if (kDown & HidNpadButton_X) {
+        downloadSelectedTrack();
+    }
+
+    // ZR или R3 — скачать весь плейлист
+    if (kDown & (HidNpadButton_ZR | HidNpadButton_StickR)) {
+        downloadAllTracks();
+    }
+
     // Y — лайк
     if (kDown & HidNpadButton_Y) {
         if (selectedIndex_ < listSize) {
@@ -56,7 +66,14 @@ void PlaylistScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
     }
 }
 
-void PlaylistScreen::update() {}
+void PlaylistScreen::update() {
+    if (statusTimer_ > 0) {
+        statusTimer_--;
+        if (statusTimer_ == 0 && !isDownloading_) {
+            statusMessage_.clear();
+        }
+    }
+}
 
 void PlaylistScreen::render() {
     auto* r = app_->getRenderer();
@@ -82,9 +99,15 @@ void PlaylistScreen::render() {
     std::string info = std::to_string(playlist_.tracks.size()) + " треков";
     r->drawText(info, textX, coverY + 40, Theme::FONT_SMALL, Theme::TEXT_SECONDARY);
 
-    // Кнопка "Воспроизвести всё"
-    r->drawText("▶ Воспроизвести всё", textX, coverY + 68,
-                 Theme::FONT_SMALL, Theme::ACCENT);
+    // Статус скачивания или подсказка
+    if (!statusMessage_.empty()) {
+        r->drawTextTruncated(statusMessage_, textX, coverY + 68,
+                              Theme::SCREEN_W - textX - Theme::PADDING,
+                              Theme::FONT_SMALL, Theme::ACCENT);
+    } else {
+        r->drawText("▶ [A] Играть  •  [X] Скачать трек  •  [ZR] Скачать всё", textX, coverY + 68,
+                     Theme::FONT_SMALL, Theme::ACCENT);
+    }
 
     // Список треков
     int contentY = headerH;
@@ -117,8 +140,10 @@ void PlaylistScreen::render() {
                 r->drawRect(trackX - 4, itemY, Theme::SCREEN_W - trackX + 4, Theme::ITEM_HEIGHT, Theme::BG_SELECTED);
             }
 
+            bool isDownloaded = app_->getAPI()->isTrackDownloaded(playlist_.tracks[i]);
+            std::string dlTag = isDownloaded ? " [SD]" : "";
             SDL_Color titleColor = playing ? Theme::ACCENT : Theme::TEXT_PRIMARY;
-            r->drawTextTruncated(playlist_.tracks[i].title, trackX, itemY + 12,
+            r->drawTextTruncated(playlist_.tracks[i].title + dlTag, trackX, itemY + 12,
                                   Theme::SCREEN_W - trackX - 100,
                                   Theme::FONT_NORMAL, titleColor);
 
@@ -143,7 +168,7 @@ void PlaylistScreen::render() {
 
     // Подсказки
     std::vector<std::pair<std::string, std::string>> hints = {
-        {"A", "Играть"}, {"Y", "Лайк"}, {"B", "Назад"}
+        {"A", "Играть"}, {"X", "Скачать"}, {"R3", "Скачать всё"}, {"Y", "Лайк"}, {"B", "Назад"}
     };
     r->drawButtonHints(hints);
 }
@@ -171,4 +196,45 @@ void PlaylistScreen::loadTracks() {
     }
     tracksLoaded_ = true;
     loading_ = false;
+}
+
+void PlaylistScreen::downloadSelectedTrack() {
+    int listSize = static_cast<int>(playlist_.tracks.size());
+    if (selectedIndex_ < 0 || selectedIndex_ >= listSize) return;
+
+    const auto& track = playlist_.tracks[selectedIndex_];
+    statusMessage_ = "Скачивание: " + track.title + "...";
+    isDownloading_ = true;
+    app_->render();
+
+    bool ok = app_->getAPI()->downloadTrackToFile(track);
+    if (ok) {
+        statusMessage_ = "Сохранено в /music: " + track.title;
+    } else {
+        statusMessage_ = "Ошибка: " + app_->getAPI()->getLastError();
+    }
+    statusTimer_ = 180;
+    isDownloading_ = false;
+}
+
+void PlaylistScreen::downloadAllTracks() {
+    int listSize = static_cast<int>(playlist_.tracks.size());
+    if (listSize == 0) return;
+
+    isDownloading_ = true;
+    int successCount = 0;
+
+    for (int i = 0; i < listSize; ++i) {
+        const auto& track = playlist_.tracks[i];
+        statusMessage_ = "Скачивание (" + std::to_string(i + 1) + "/" + std::to_string(listSize) + "): " + track.title;
+        app_->render();
+
+        if (app_->getAPI()->downloadTrackToFile(track)) {
+            successCount++;
+        }
+    }
+
+    statusMessage_ = "Готово! Скачано " + std::to_string(successCount) + " из " + std::to_string(listSize) + " в /music";
+    statusTimer_ = 240;
+    isDownloading_ = false;
 }

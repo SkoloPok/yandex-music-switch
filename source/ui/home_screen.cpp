@@ -69,6 +69,22 @@ void HomeScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
         app_->navigateTo(AppScreen::SEARCH);
     }
 
+    // ZR — скачать выбранный трек (во вкладке Мне нравится)
+    if ((kDown & HidNpadButton_ZR) && activeTab_ == 1 && selectedIndex_ < static_cast<int>(likedTracks_.size())) {
+        const auto& track = likedTracks_[selectedIndex_];
+        statusMessage_ = "Скачивание: " + track.title + "...";
+        isDownloading_ = true;
+        app_->render();
+        bool ok = app_->getAPI()->downloadTrackToFile(track);
+        if (ok) {
+            statusMessage_ = "Сохранено в /music: " + track.title;
+        } else {
+            statusMessage_ = "Ошибка: " + app_->getAPI()->getLastError();
+        }
+        statusTimer_ = 180;
+        isDownloading_ = false;
+    }
+
     // Y — выход из аккаунта (логаут)
     if (kDown & HidNpadButton_Y) {
         AuthManager::deleteToken();
@@ -81,7 +97,14 @@ void HomeScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
     }
 }
 
-void HomeScreen::update() {}
+void HomeScreen::update() {
+    if (statusTimer_ > 0) {
+        statusTimer_--;
+        if (statusTimer_ == 0 && !isDownloading_) {
+            statusMessage_.clear();
+        }
+    }
+}
 
 void HomeScreen::render() {
     auto* r = app_->getRenderer();
@@ -125,7 +148,9 @@ void HomeScreen::render() {
                 int itemY = contentY + (i - scrollOffset_) * Theme::ITEM_HEIGHT;
                 bool selected = (i == selectedIndex_);
                 bool playing = currentTrack && currentTrack->id == likedTracks_[i].id;
-                r->drawListItem(0, itemY, Theme::SCREEN_W, likedTracks_[i].title,
+                bool isDownloaded = app_->getAPI()->isTrackDownloaded(likedTracks_[i]);
+                std::string dlTag = isDownloaded ? " [SD]" : "";
+                r->drawListItem(0, itemY, Theme::SCREEN_W, likedTracks_[i].title + dlTag,
                                likedTracks_[i].getArtistName(), nullptr, selected, playing);
             }
         }
@@ -133,10 +158,24 @@ void HomeScreen::render() {
 
     r->setClipRect(nullptr);
 
+    // Статус скачивания
+    if (!statusMessage_.empty()) {
+        r->drawTextTruncated(statusMessage_, Theme::PADDING, Theme::SCREEN_H - 60,
+                              Theme::SCREEN_W - Theme::PADDING * 2,
+                              Theme::FONT_SMALL, Theme::ACCENT);
+    }
+
     // Подсказки кнопок
-    std::vector<std::pair<std::string, std::string>> hints = {
-        {"A", "Выбрать"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
-    };
+    std::vector<std::pair<std::string, std::string>> hints;
+    if (activeTab_ == 1) {
+        hints = {
+            {"A", "Играть"}, {"ZR", "Скачать"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
+        };
+    } else {
+        hints = {
+            {"A", "Выбрать"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
+        };
+    }
     r->drawButtonHints(hints);
 }
 

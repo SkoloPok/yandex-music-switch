@@ -162,6 +162,54 @@ HttpResponse HttpClient::downloadBinary(const std::string& url) {
     return response;
 }
 
+HttpResponse HttpClient::downloadToFile(const std::string& url, const std::string& filePath) {
+    HttpResponse response{};
+    response.statusCode = 0;
+    response.success = false;
+
+    FILE* fp = fopen(filePath.c_str(), "wb");
+    if (!fp) {
+        response.error = "Failed to open file for writing: " + filePath;
+        return response;
+    }
+
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        fclose(fp);
+        response.error = "Failed to initialize CURL handle";
+        return response;
+    }
+
+    struct curl_slist* headerList = nullptr;
+    std::vector<std::pair<std::string, std::string>> emptyHeaders;
+    setupCommonOptions(curl, url, emptyHeaders, &headerList);
+
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fileWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, DOWNLOAD_TIMEOUT);
+
+    CURLcode res = curl_easy_perform(curl);
+    fclose(fp);
+
+    if (res != CURLE_OK) {
+        response.error = std::string("CURL error: ") + curl_easy_strerror(res);
+        remove(filePath.c_str());
+    } else {
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response.statusCode);
+        response.success = (response.statusCode >= 200 && response.statusCode < 300);
+        if (!response.success) {
+            remove(filePath.c_str());
+        }
+    }
+
+    if (headerList) {
+        curl_slist_free_all(headerList);
+    }
+    curl_easy_cleanup(curl);
+
+    return response;
+}
+
 // ============================================================================
 // Приватные методы
 // ============================================================================
@@ -179,6 +227,11 @@ size_t HttpClient::binaryWriteCallback(void* contents, size_t size, size_t nmemb
     auto* data = static_cast<uint8_t*>(contents);
     buffer->insert(buffer->end(), data, data + totalSize);
     return totalSize;
+}
+
+size_t HttpClient::fileWriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+    FILE* fp = static_cast<FILE*>(userp);
+    return fwrite(contents, size, nmemb, fp);
 }
 
 void HttpClient::setupCommonOptions(CURL* curl, const std::string& url,

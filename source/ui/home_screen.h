@@ -33,5 +33,9 @@ private:
     bool likedLoaded_ = false;
     bool loading_ = false;
 
+    std::string statusMessage_;
+    int statusTimer_ = 0;
+    bool isDownloading_ = false;
+
     static constexpr int VISIBLE_ITEMS = 7; // сколько элементов помещается на экран
 };

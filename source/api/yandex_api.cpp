@@ -13,6 +13,14 @@
 #include <algorithm>
 #include <sstream>
 #include <cstdlib>
+#include <sys/stat.h>
+
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#include <direct.h>
+#define MKDIR(path) _mkdir(path)
+#else
+#define MKDIR(path) mkdir(path, 0777)
+#endif
 
 const std::string YandexMusicAPI::BASE_URL = "https://api.music.yandex.net";
 const std::string YandexMusicAPI::SIGN_SALT = "XGRlBW9FXlekgbPrRHuSiA";
@@ -610,4 +618,78 @@ std::vector<uint8_t> YandexMusicAPI::downloadCover(const std::string& coverUrl) 
     if (!resp.success) return {};
 
     return resp.binaryData;
+}
+
+static std::string sanitizeName(const std::string& str) {
+    std::string safe = str;
+    for (char& c : safe) {
+        if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
+            c == '"' || c == '<' || c == '>' || c == '|' || static_cast<unsigned char>(c) < 32) {
+            c = '_';
+        }
+    }
+    while (!safe.empty() && (safe.front() == ' ' || safe.front() == '.')) safe.erase(safe.begin());
+    while (!safe.empty() && (safe.back() == ' ' || safe.back() == '.')) safe.pop_back();
+    if (safe.empty()) safe = "track";
+    return safe;
+}
+
+std::string YandexMusicAPI::getTrackFilePath(const Track& track, const std::string& customFolder) {
+    std::string folder = customFolder;
+    if (folder.empty()) {
+#ifdef __SWITCH__
+        folder = "sdmc:/music";
+#else
+        folder = "music";
+#endif
+    }
+    if (folder.back() != '/' && folder.back() != '\\') {
+        folder += "/";
+    }
+
+    std::string artist = sanitizeName(track.getArtistName());
+    std::string title = sanitizeName(track.title);
+    return folder + artist + " - " + title + ".mp3";
+}
+
+bool YandexMusicAPI::isTrackDownloaded(const Track& track, const std::string& customFolder) {
+    std::string path = getTrackFilePath(track, customFolder);
+    FILE* f = fopen(path.c_str(), "rb");
+    if (f) {
+        fclose(f);
+        return true;
+    }
+    return false;
+}
+
+bool YandexMusicAPI::downloadTrackToFile(const Track& track, const std::string& customFolder) {
+    std::string folder = customFolder;
+    if (folder.empty()) {
+#ifdef __SWITCH__
+        folder = "sdmc:/music";
+#else
+        folder = "music";
+#endif
+    }
+
+    MKDIR(folder.c_str());
+
+    std::string filePath = getTrackFilePath(track, folder);
+    if (isTrackDownloaded(track, folder)) {
+        return true;
+    }
+
+    std::string url = getTrackDownloadUrl(track.id);
+    if (url.empty()) {
+        lastError_ = "Failed to get download URL for: " + track.title;
+        return false;
+    }
+
+    HttpResponse resp = http_.downloadToFile(url, filePath);
+    if (!resp.success) {
+        lastError_ = "Download failed: " + resp.error;
+        return false;
+    }
+
+    return true;
 }

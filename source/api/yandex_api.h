@@ -54,6 +54,11 @@ public:
     // Скачать аудиоданные трека в память
     std::vector<uint8_t> downloadTrack(const std::string& trackId);
 
+    // Сохранить трек в MP3 на SD-карту (в папку /music/ для sys-tune)
+    bool downloadTrackToFile(const Track& track, const std::string& customFolder = "");
+    bool isTrackDownloaded(const Track& track, const std::string& customFolder = "");
+    std::string getTrackFilePath(const Track& track, const std::string& customFolder = "");
+
     // Скачать обложку
     std::vector<uint8_t> downloadCover(const std::string& coverUrl);
 

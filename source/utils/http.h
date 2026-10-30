@@ -49,6 +49,9 @@ public:
     /// Скачать бинарные данные (аудиофайл) по URL
     HttpResponse downloadBinary(const std::string& url);
 
+    /// Скачать напрямую в файл на диске (экономит память)
+    HttpResponse downloadToFile(const std::string& url, const std::string& filePath);
+
 private:
     std::string authToken_;
 
@@ -57,6 +60,9 @@ private:
 
     /// Колбэк записи бинарных данных (для binaryData)
     static size_t binaryWriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
+
+    /// Колбэк записи данных в файл
+    static size_t fileWriteCallback(void* contents, size_t size, size_t nmemb, void* userp);
 
     /// Настройка общих параметров CURL-хэндла
     void setupCommonOptions(CURL* curl, const std::string& url,

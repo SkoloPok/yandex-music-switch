@@ -30,5 +30,9 @@ private:
     int selectedIndex_ = 0;
     int scrollOffset_ = 0;
 
+    std::string statusMessage_;
+    int statusTimer_ = 0;
+    bool isDownloading_ = false;
+
     static constexpr int VISIBLE_ITEMS = 7;
 };

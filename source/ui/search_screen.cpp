@@ -93,9 +93,32 @@ void SearchScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
             app_->getAPI()->likeTrack(results_.tracks[selectedIndex_].id);
         }
     }
+
+    // ZR — скачать трек
+    if ((kDown & HidNpadButton_ZR) && activeTab_ == 0 && selectedIndex_ < static_cast<int>(results_.tracks.size())) {
+        const auto& track = results_.tracks[selectedIndex_];
+        statusMessage_ = "Скачивание: " + track.title + "...";
+        isDownloading_ = true;
+        app_->render();
+        bool ok = app_->getAPI()->downloadTrackToFile(track);
+        if (ok) {
+            statusMessage_ = "Сохранено в /music: " + track.title;
+        } else {
+            statusMessage_ = "Ошибка: " + app_->getAPI()->getLastError();
+        }
+        statusTimer_ = 180;
+        isDownloading_ = false;
+    }
 }
 
-void SearchScreen::update() {}
+void SearchScreen::update() {
+    if (statusTimer_ > 0) {
+        statusTimer_--;
+        if (statusTimer_ == 0 && !isDownloading_) {
+            statusMessage_.clear();
+        }
+    }
+}
 
 void SearchScreen::render() {
     auto* r = app_->getRenderer();
@@ -148,7 +171,9 @@ void SearchScreen::render() {
             int itemY = contentY + (i - scrollOffset_) * Theme::ITEM_HEIGHT;
             bool selected = (i == selectedIndex_);
             bool playing = currentTrack && currentTrack->id == results_.tracks[i].id;
-            r->drawListItem(0, itemY, Theme::SCREEN_W, results_.tracks[i].title,
+            bool isDownloaded = app_->getAPI()->isTrackDownloaded(results_.tracks[i]);
+            std::string dlTag = isDownloaded ? " [SD]" : "";
+            r->drawListItem(0, itemY, Theme::SCREEN_W, results_.tracks[i].title + dlTag,
                            results_.tracks[i].getArtistName(), nullptr, selected, playing);
         }
     } else if (activeTab_ == 1) {
@@ -183,11 +208,26 @@ void SearchScreen::render() {
 
     r->setClipRect(nullptr);
 
+    // Статус скачивания
+    if (!statusMessage_.empty()) {
+        r->drawTextTruncated(statusMessage_, Theme::PADDING, Theme::SCREEN_H - 60,
+                              Theme::SCREEN_W - Theme::PADDING * 2,
+                              Theme::FONT_SMALL, Theme::ACCENT);
+    }
+
     // Подсказки
-    std::vector<std::pair<std::string, std::string>> hints = {
-        {"A", "Выбрать"}, {"X", "Новый поиск"}, {"Y", "Лайк"},
-        {"L/R", "Вкладка"}, {"B", "Назад"}
-    };
+    std::vector<std::pair<std::string, std::string>> hints;
+    if (activeTab_ == 0) {
+        hints = {
+            {"A", "Выбрать"}, {"ZR", "Скачать"}, {"X", "Новый поиск"}, {"Y", "Лайк"},
+            {"L/R", "Вкладка"}, {"B", "Назад"}
+        };
+    } else {
+        hints = {
+            {"A", "Выбрать"}, {"X", "Новый поиск"}, {"Y", "Лайк"},
+            {"L/R", "Вкладка"}, {"B", "Назад"}
+        };
+    }
     r->drawButtonHints(hints);
 }
 

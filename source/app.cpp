@@ -215,8 +215,29 @@ void App::showPlaylist(const Playlist& playlist) {
 void App::downloadAndPlayTrack(const Track& track) {
     player_->setState(PlayerState::LOADING);
 
-    // Скачиваем аудиоданные
-    auto audioData = api_->downloadTrack(track.id);
+    std::vector<uint8_t> audioData;
+
+    // Сначала проверяем, скачан ли трек локально на SD-карту
+    if (api_->isTrackDownloaded(track)) {
+        std::string localPath = api_->getTrackFilePath(track);
+        FILE* f = fopen(localPath.c_str(), "rb");
+        if (f) {
+            fseek(f, 0, SEEK_END);
+            long sz = ftell(f);
+            fseek(f, 0, SEEK_SET);
+            if (sz > 0) {
+                audioData.resize(sz);
+                fread(audioData.data(), 1, sz, f);
+            }
+            fclose(f);
+        }
+    }
+
+    // Если локально нет — скачиваем из сети
+    if (audioData.empty()) {
+        audioData = api_->downloadTrack(track.id);
+    }
+
     if (audioData.empty()) {
         player_->setState(PlayerState::STOPPED);
         return;
