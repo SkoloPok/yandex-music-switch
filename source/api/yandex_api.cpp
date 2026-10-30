@@ -620,18 +620,168 @@ std::vector<uint8_t> YandexMusicAPI::downloadCover(const std::string& coverUrl) 
     return resp.binaryData;
 }
 
-static std::string sanitizeName(const std::string& str) {
-    std::string safe = str;
-    for (char& c : safe) {
-        if (c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
-            c == '"' || c == '<' || c == '>' || c == '|' || static_cast<unsigned char>(c) < 32) {
-            c = '_';
+// Транслитерация кириллицы и очистка для безопасных имён файлов FAT32 на Nintendo Switch
+static std::string transliterateAndSanitize(const std::string& utf8Str) {
+    std::string result;
+    result.reserve(utf8Str.size());
+
+    size_t i = 0;
+    size_t len = utf8Str.size();
+
+    while (i < len) {
+        unsigned char c1 = static_cast<unsigned char>(utf8Str[i]);
+
+        if (c1 < 0x80) {
+            // ASCII символы
+            if (c1 == '/' || c1 == '\\' || c1 == ':' || c1 == '*' || c1 == '?' ||
+                c1 == '"' || c1 == '<' || c1 == '>' || c1 == '|' || c1 < 32) {
+                result += '_';
+            } else {
+                result += static_cast<char>(c1);
+            }
+            i++;
+        } else if ((c1 == 0xD0 || c1 == 0xD1) && i + 1 < len) {
+            // Кириллица (2 байта в UTF-8)
+            unsigned char c2 = static_cast<unsigned char>(utf8Str[i + 1]);
+            uint16_t code = (static_cast<uint16_t>(c1) << 8) | c2;
+            i += 2;
+
+            switch (code) {
+                // Заглавные буквы
+                case 0xD090: result += "A"; break;
+                case 0xD091: result += "B"; break;
+                case 0xD092: result += "V"; break;
+                case 0xD093: result += "G"; break;
+                case 0xD094: result += "D"; break;
+                case 0xD095: result += "E"; break;
+                case 0xD081: result += "Yo"; break; // Ё
+                case 0xD096: result += "Zh"; break;
+                case 0xD097: result += "Z"; break;
+                case 0xD098: result += "I"; break;
+                case 0xD099: result += "Y"; break;
+                case 0xD09A: result += "K"; break;
+                case 0xD09B: result += "L"; break;
+                case 0xD09C: result += "M"; break;
+                case 0xD09D: result += "N"; break;
+                case 0xD09E: result += "O"; break;
+                case 0xD09F: result += "P"; break;
+                case 0xD0A0: result += "R"; break;
+                case 0xD0A1: result += "S"; break;
+                case 0xD0A2: result += "T"; break;
+                case 0xD0A3: result += "U"; break;
+                case 0xD0A4: result += "F"; break;
+                case 0xD0A5: result += "Kh"; break;
+                case 0xD0A6: result += "Ts"; break;
+                case 0xD0A7: result += "Ch"; break;
+                case 0xD0A8: result += "Sh"; break;
+                case 0xD0A9: result += "Shch"; break;
+                case 0xD0AA: break; // Ъ
+                case 0xD0AB: result += "Y"; break;
+                case 0xD0AC: break; // Ь
+                case 0xD0AD: result += "E"; break;
+                case 0xD0AE: result += "Yu"; break;
+                case 0xD0AF: result += "Ya"; break;
+
+                // Строчные буквы
+                case 0xD0B0: result += "a"; break;
+                case 0xD0B1: result += "b"; break;
+                case 0xD0B2: result += "v"; break;
+                case 0xD0B3: result += "g"; break;
+                case 0xD0B4: result += "d"; break;
+                case 0xD0B5: result += "e"; break;
+                case 0xD191: result += "yo"; break; // ё
+                case 0xD0B6: result += "zh"; break;
+                case 0xD0B7: result += "z"; break;
+                case 0xD0B8: result += "i"; break;
+                case 0xD0B9: result += "y"; break;
+                case 0xD0BA: result += "k"; break;
+                case 0xD0BB: result += "l"; break;
+                case 0xD0BC: result += "m"; break;
+                case 0xD0BD: result += "n"; break;
+                case 0xD0BE: result += "o"; break;
+                case 0xD0BF: result += "p"; break;
+                case 0xD180: result += "r"; break;
+                case 0xD181: result += "s"; break;
+                case 0xD182: result += "t"; break;
+                case 0xD183: result += "u"; break;
+                case 0xD184: result += "f"; break;
+                case 0xD185: result += "kh"; break;
+                case 0xD186: result += "ts"; break;
+                case 0xD187: result += "ch"; break;
+                case 0xD188: result += "sh"; break;
+                case 0xD189: result += "shch"; break;
+                case 0xD18A: break; // ъ
+                case 0xD18B: result += "y"; break;
+                case 0xD18C: break; // ь
+                case 0xD18D: result += "e"; break;
+                case 0xD18E: result += "yu"; break;
+                case 0xD18F: result += "ya"; break;
+
+                // Украинский / белорусский
+                case 0xD086: result += "I"; break;
+                case 0xD196: result += "i"; break;
+                case 0xD087: result += "Yi"; break;
+                case 0xD197: result += "yi"; break;
+                case 0xD084: result += "Ye"; break;
+                case 0xD194: result += "ye"; break;
+                case 0xD08E: result += "U"; break;
+                case 0xD19E: result += "u"; break;
+
+                default: result += '_'; break;
+            }
+        } else if (c1 == 0xC3 && i + 1 < len) {
+            // Диакритические знаки Latin-1 (é, è, etc.)
+            unsigned char c2 = static_cast<unsigned char>(utf8Str[i + 1]);
+            i += 2;
+            if (c2 >= 0x80 && c2 <= 0x85) result += 'A';
+            else if (c2 == 0x87) result += 'C';
+            else if (c2 >= 0x88 && c2 <= 0x8B) result += 'E';
+            else if (c2 >= 0x8C && c2 <= 0x8F) result += 'I';
+            else if (c2 == 0x91) result += 'N';
+            else if (c2 >= 0x92 && c2 <= 0x96) result += 'O';
+            else if (c2 >= 0x99 && c2 <= 0x9C) result += 'U';
+            else if (c2 >= 0xA0 && c2 <= 0xA5) result += 'a';
+            else if (c2 == 0xA7) result += 'c';
+            else if (c2 >= 0xA8 && c2 <= 0xAB) result += 'e';
+            else if (c2 >= 0xAC && c2 <= 0xAF) result += 'i';
+            else if (c2 == 0xB1) result += 'n';
+            else if (c2 >= 0xB2 && c2 <= 0xB6) result += 'o';
+            else if (c2 >= 0xB9 && c2 <= 0xBC) result += 'u';
+            else result += '_';
+        } else {
+            // Прочие многобайтовые UTF-8 символы
+            int extra = 1;
+            if ((c1 & 0xE0) == 0xC0) extra = 1;
+            else if ((c1 & 0xF0) == 0xE0) extra = 2;
+            else if ((c1 & 0xF8) == 0xF0) extra = 3;
+            i += 1 + extra;
+            result += '_';
         }
     }
-    while (!safe.empty() && (safe.front() == ' ' || safe.front() == '.')) safe.erase(safe.begin());
-    while (!safe.empty() && (safe.back() == ' ' || safe.back() == '.')) safe.pop_back();
-    if (safe.empty()) safe = "track";
-    return safe;
+
+    std::string cleaned;
+    cleaned.reserve(result.size());
+    bool lastWasUnder = false;
+    for (char c : result) {
+        if (c == '_') {
+            if (!lastWasUnder) {
+                cleaned += '_';
+                lastWasUnder = true;
+            }
+        } else {
+            cleaned += c;
+            lastWasUnder = false;
+        }
+    }
+
+    while (!cleaned.empty() && (cleaned.front() == ' ' || cleaned.front() == '.' || cleaned.front() == '_')) {
+        cleaned.erase(cleaned.begin());
+    }
+    while (!cleaned.empty() && (cleaned.back() == ' ' || cleaned.back() == '.' || cleaned.back() == '_')) {
+        cleaned.pop_back();
+    }
+
+    return cleaned;
 }
 
 std::string YandexMusicAPI::getTrackFilePath(const Track& track, const std::string& customFolder) {
@@ -647,9 +797,21 @@ std::string YandexMusicAPI::getTrackFilePath(const Track& track, const std::stri
         folder += "/";
     }
 
-    std::string artist = sanitizeName(track.getArtistName());
-    std::string title = sanitizeName(track.title);
-    return folder + artist + " - " + title + ".mp3";
+    std::string artist = transliterateAndSanitize(track.getArtistName());
+    std::string title = transliterateAndSanitize(track.title);
+
+    std::string name;
+    if (!artist.empty() && !title.empty()) {
+        name = artist + " - " + title;
+    } else if (!title.empty()) {
+        name = title;
+    } else if (!artist.empty()) {
+        name = artist;
+    } else {
+        name = "track_" + track.id;
+    }
+
+    return folder + name + ".mp3";
 }
 
 bool YandexMusicAPI::isTrackDownloaded(const Track& track, const std::string& customFolder) {
@@ -672,7 +834,11 @@ bool YandexMusicAPI::downloadTrackToFile(const Track& track, const std::string& 
 #endif
     }
 
+#ifdef __SWITCH__
+    MKDIR("sdmc:/music");
+#else
     MKDIR(folder.c_str());
+#endif
 
     std::string filePath = getTrackFilePath(track, folder);
     if (isTrackDownloaded(track, folder)) {

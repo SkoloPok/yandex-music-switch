@@ -9,6 +9,10 @@
 #include "ui/playlist_screen.h"
 #include "ui/player_bar.h"
 #include "ui/theme.h"
+#include <sys/stat.h>
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#include <direct.h>
+#endif
 
 App::App(SDL_Renderer* renderer)
     : sdlRenderer_(renderer) {}
@@ -19,6 +23,9 @@ bool App::init() {
 #ifdef __SWITCH__
     padConfigureInput(1, HidNpadStyleSet_NpadStandard);
     padInitializeDefault(&pad_state_);
+    mkdir("sdmc:/music", 0777);
+#else
+    _mkdir("music");
 #endif
 
     // Создаём подсистемы

@@ -3,6 +3,12 @@
 #include "http.h"
 
 #include <cstring>
+#include <cerrno>
+#include <sys/stat.h>
+
+#if defined(_WIN32) && !defined(__CYGWIN__)
+#include <direct.h>
+#endif
 
 // Таймаут соединения (секунды)
 static constexpr long CONNECT_TIMEOUT = 10L;
@@ -167,9 +173,21 @@ HttpResponse HttpClient::downloadToFile(const std::string& url, const std::strin
     response.statusCode = 0;
     response.success = false;
 
+    // Создаём родительскую директорию, если она не существует
+    size_t lastSlash = filePath.find_last_of("/\\");
+    if (lastSlash != std::string::npos) {
+        std::string dir = filePath.substr(0, lastSlash);
+#if defined(_WIN32) && !defined(__CYGWIN__)
+        _mkdir(dir.c_str());
+#else
+        mkdir(dir.c_str(), 0777);
+#endif
+    }
+
     FILE* fp = fopen(filePath.c_str(), "wb");
     if (!fp) {
-        response.error = "Failed to open file for writing: " + filePath;
+        std::string errStr = strerror(errno);
+        response.error = "Failed to open file for writing: " + filePath + " (" + errStr + ")";
         return response;
     }
 
