@@ -36,11 +36,18 @@ jobs:
 
       - name: Build project
         run: |
+          # Build foreground app
           make
+
+          # Build background sysmodule
           cd sysmodule && make && cd ..
-          git clone --depth 1 https://github.com/WerWolv/libtesla.git overlay/libtesla
+
+          # Install libtesla and build Tesla overlay
+          git clone --depth 1 https://github.com/WerWolv/libtesla.git
+          cd libtesla && make && make install && cd ..
           cd overlay && make && cd ..
 
+          # Package release archive
           mkdir -p release/atmosphere/contents/4200000000594D55
           cp sysmodule/sys-yandex.nsp release/atmosphere/contents/4200000000594D55/exefs.nsp
           cp sysmodule/toolbox.json release/atmosphere/contents/4200000000594D55/toolbox.json
@@ -51,7 +58,13 @@ jobs:
           mkdir -p release/switch/yandex-music
           cp yandex-music.nro release/switch/yandex-music/yandex-music.nro
 
-          cd release && zip -r ../yandex-music-background-pack.zip * && cd ..
+          cd release
+          if command -v zip >/dev/null 2>&1; then
+            zip -r ../yandex-music-background-pack.zip *
+          else
+            bsdtar -a -cf ../yandex-music-background-pack.zip *
+          fi
+          cd ..
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4

@@ -13,9 +13,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET      := yandex
 BUILD       := build
-LIBTESLA_DIR := $(CURDIR)/libtesla
-SOURCES     := source $(LIBTESLA_DIR)/source
-INCLUDES    := include $(LIBTESLA_DIR)/include
+SOURCES     := source
+INCLUDES    := include
 
 #---------------------------------------------------------------------------------
 ARCH := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
@@ -28,7 +27,7 @@ CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS  := -g $(ARCH)
 LDFLAGS   = -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS := -lnx
+LIBS := -ltesla -lnx
 
 LIBDIRS := $(PORTLIBS) $(LIBNX)
 

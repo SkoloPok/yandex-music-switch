@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <csignal>
+#include <curl/curl.h>
 
 #ifdef __SWITCH__
 #include <switch.h>
