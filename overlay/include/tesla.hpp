@@ -504,6 +504,8 @@ namespace tsl {
 
         struct ScissoringConfig {
             s32 x, y, w, h;
+            ScissoringConfig() : x(0), y(0), w(0), h(0) {}
+            ScissoringConfig(s32 x, s32 y, s32 w, s32 h) : x(x), y(y), w(w), h(h) {}
         };
 
         /**
@@ -789,7 +791,7 @@ namespace tsl {
                         continue;
                     }
 
-                    u64 key = (static_cast<u64>(currCharacter) << 32) | static_cast<u64>(monospace) << 31 | static_cast<u64>(std::bit_cast<u32>(fontSize));
+                    u64 key = (static_cast<u64>(currCharacter) << 32) | static_cast<u64>(monospace) << 31 | static_cast<u64>(__builtin_bit_cast(u32, fontSize));
 
                     Glyph *glyph = nullptr;
 

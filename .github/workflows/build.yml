@@ -45,9 +45,10 @@ jobs:
 
       - name: Package release archive
         run: |
-          mkdir -p release/atmosphere/contents/4200000000594D55
+          mkdir -p release/atmosphere/contents/4200000000594D55/flags
           cp sysmodule/sys-yandex.nsp release/atmosphere/contents/4200000000594D55/exefs.nsp
           cp sysmodule/toolbox.json release/atmosphere/contents/4200000000594D55/toolbox.json
+          cp sysmodule/flags/boot2.flag release/atmosphere/contents/4200000000594D55/flags/boot2.flag
 
           mkdir -p release/switch/.overlays
           cp overlay/yandex.ovl release/switch/.overlays/yandex.ovl

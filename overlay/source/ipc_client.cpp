@@ -40,6 +40,13 @@ std::string IpcClient::query(const std::string& request) {
     return std::string(buf, n);
 }
 
+static int safeStoi(const std::string& str, int defVal = 0) {
+    if (str.empty()) return defVal;
+    char* end = nullptr;
+    long v = strtol(str.c_str(), &end, 10);
+    return (end != str.c_str()) ? static_cast<int>(v) : defVal;
+}
+
 OverlayStatus IpcClient::getStatus() {
     OverlayStatus st{};
     std::string resp = query("STATUS");
@@ -69,9 +76,9 @@ OverlayStatus IpcClient::getStatus() {
             if (key == "state") st.state = val;
             else if (key == "title") st.title = val;
             else if (key == "artist") st.artist = val;
-            else if (key == "elapsed") st.elapsedSec = std::stoi(val);
-            else if (key == "duration") st.durationSec = std::stoi(val);
-            else if (key == "volume") st.volume = std::stoi(val);
+            else if (key == "elapsed") st.elapsedSec = safeStoi(val);
+            else if (key == "duration") st.durationSec = safeStoi(val);
+            else if (key == "volume") st.volume = safeStoi(val, 85);
             else if (key == "mode") st.mode = val;
         }
     }
