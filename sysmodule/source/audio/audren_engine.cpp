@@ -38,7 +38,6 @@ bool AudrenEngine::init() {
         .num_effects     = 0,
         .num_sinks       = 1,
         .num_mix_objs    = 1,
-        .num_sub_mixes   = 0,
     };
 
     Result rc = audrenInitialize(&arConfig);
@@ -172,7 +171,7 @@ void AudrenEngine::audioThreadLoop() {
 
     bool voiceStarted = false;
     std::vector<uint8_t> mp3Chunk(4096);
-    int16_t framePcm[MINIMP3_MAX_SAMPLES_PER_FRAME * 2];
+    int16_t framePcm[Mp3Decoder::MAX_SAMPLES_PER_FRAME * 2];
     uint64_t totalSamplesDecoded = 0;
     int currentSampleRate = 44100;
 
@@ -211,7 +210,7 @@ void AudrenEngine::audioThreadLoop() {
                     size_t toPeek = std::min(available, mp3Chunk.size());
                     currentRingBuffer_->peek(mp3Chunk.data(), toPeek);
 
-                    DecodedFrame frame = decoder_.decodeFrame(mp3Chunk.data(), toPeek, framePcm, MINIMP3_MAX_SAMPLES_PER_FRAME * 2);
+                    DecodedFrame frame = decoder_.decodeFrame(mp3Chunk.data(), toPeek, framePcm, Mp3Decoder::MAX_SAMPLES_PER_FRAME * 2);
 
                     if (frame.bytesConsumed > 0) {
                         currentRingBuffer_->advance(frame.bytesConsumed);
@@ -224,7 +223,7 @@ void AudrenEngine::audioThreadLoop() {
                     if (frame.samplesPerChannel > 0) {
                         if (frame.sampleRate > 0 && frame.sampleRate != currentSampleRate) {
                             currentSampleRate = frame.sampleRate;
-                            audrvVoiceSetSampleRate(&ctx->driver, ctx->voiceId, currentSampleRate);
+                            audrvVoiceSetPitch(&ctx->driver, ctx->voiceId, static_cast<float>(currentSampleRate) / 44100.0f);
                         }
 
                         size_t toCopy = std::min(static_cast<size_t>(frame.samplesPerChannel), SAMPLES_PER_BUF - samplesFilled);

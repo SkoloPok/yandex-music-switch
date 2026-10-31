@@ -12,6 +12,8 @@ struct DecodedFrame {
 
 class Mp3Decoder {
 public:
+    static constexpr size_t MAX_SAMPLES_PER_FRAME = 1152;
+
     Mp3Decoder();
     ~Mp3Decoder();
 

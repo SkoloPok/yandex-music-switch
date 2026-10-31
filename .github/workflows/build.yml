@@ -44,7 +44,9 @@ jobs:
 
           # Install libtesla and build Tesla overlay
           git clone --depth 1 https://github.com/WerWolv/libtesla.git
-          cd libtesla && make && make install && cd ..
+          cmake -B libtesla/build -S libtesla -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake
+          cmake --build libtesla/build
+          cmake --install libtesla/build
           cd overlay && make && cd ..
 
           # Package release archive
