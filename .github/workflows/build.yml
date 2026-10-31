@@ -40,13 +40,6 @@ jobs:
       - name: Build background sysmodule
         run: make -C sysmodule
 
-      - name: Build and install libtesla
-        run: |
-          git clone --depth 1 https://github.com/WerWolv/libtesla.git
-          cmake -B libtesla/build -S libtesla -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake
-          cmake --build libtesla/build
-          cmake --install libtesla/build
-
       - name: Build Tesla overlay
         run: make -C overlay
 
