@@ -35,11 +35,34 @@ jobs:
             switch-libjpeg-turbo || true
 
       - name: Build project
-        run: make
+        run: |
+          make
+          cd sysmodule && make && cd ..
+          git clone --depth 1 https://github.com/WerWolv/libtesla.git overlay/libtesla
+          cd overlay && make && cd ..
+
+          mkdir -p release/atmosphere/contents/4200000000594D55
+          cp sysmodule/sys-yandex.nsp release/atmosphere/contents/4200000000594D55/exefs.nsp
+          cp sysmodule/toolbox.json release/atmosphere/contents/4200000000594D55/toolbox.json
+
+          mkdir -p release/switch/.overlays
+          cp overlay/yandex.ovl release/switch/.overlays/yandex.ovl
+
+          mkdir -p release/switch/yandex-music
+          cp yandex-music.nro release/switch/yandex-music/yandex-music.nro
+
+          cd release && zip -r ../yandex-music-background-pack.zip * && cd ..
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         with:
           name: yandex-music-switch
           path: yandex-music.nro
+          if-no-files-found: error
+
+      - name: Upload Background Pack artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: yandex-music-background-pack
+          path: yandex-music-background-pack.zip
           if-no-files-found: error

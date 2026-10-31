@@ -1,0 +1,18 @@
+{
+  "name": "sys-yandex",
+  "title_id": "0x4200000000594D55",
+  "title_type": "SystemProgram",
+  "main_thread_stack_size": "0x00020000",
+  "main_thread_priority": 44,
+  "default_cpu_id": 3,
+  "process_category": "RegularTitle",
+  "service_access": [
+    "*"
+  ],
+  "service_host": [
+    "*"
+  ],
+  "fs_access": {
+    "permissions": "0xFFFFFFFFFFFFFFFF"
+  }
+}
