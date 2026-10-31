@@ -76,18 +76,15 @@ DEPENDS := $(OFILES:.o=.d)
 
 all: $(OUTPUT).nsp
 
-$(OUTPUT).nsp: $(OUTPUT).nso $(TOPDIR)/exefs/main.npdm
+$(OUTPUT).nsp: $(OUTPUT).nso $(TOPDIR)/main.npdm
 	@mkdir -p $(TOPDIR)/exefs
 	@cp $(OUTPUT).nso $(TOPDIR)/exefs/main
+	@cp $(TOPDIR)/main.npdm $(TOPDIR)/exefs/main.npdm
 	@build_pfs0 $(TOPDIR)/exefs $@
 	@echo "Built $(OUTPUT).nsp"
 
 $(OUTPUT).nso: $(OUTPUT).elf
 	@elf2nso $< $@
-
-$(TOPDIR)/exefs/main.npdm: $(TOPDIR)/npdm.json
-	@mkdir -p $(TOPDIR)/exefs
-	@npdmtool $< $@
 
 $(OUTPUT).elf: $(OFILES)
 	$(SILENTMSG) linking $(notdir $@)
