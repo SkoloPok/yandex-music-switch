@@ -5,7 +5,10 @@
   "main_thread_stack_size": "0x00020000",
   "main_thread_priority": 44,
   "default_cpu_id": 3,
-  "process_category": "RegularTitle",
+  "process_category": 0,
+  "system_resource_size": "0x00000000",
+  "version": 0,
+  "address_space_type": 1,
   "service_access": [
     "*"
   ],

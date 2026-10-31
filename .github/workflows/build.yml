@@ -34,22 +34,24 @@ jobs:
             switch-libpng \
             switch-libjpeg-turbo || true
 
-      - name: Build project
+      - name: Build foreground app
+        run: make
+
+      - name: Build background sysmodule
+        run: make -C sysmodule
+
+      - name: Build and install libtesla
         run: |
-          # Build foreground app
-          make
-
-          # Build background sysmodule
-          cd sysmodule && make && cd ..
-
-          # Install libtesla and build Tesla overlay
           git clone --depth 1 https://github.com/WerWolv/libtesla.git
           cmake -B libtesla/build -S libtesla -DCMAKE_TOOLCHAIN_FILE=/opt/devkitpro/cmake/Switch.cmake
           cmake --build libtesla/build
           cmake --install libtesla/build
-          cd overlay && make && cd ..
 
-          # Package release archive
+      - name: Build Tesla overlay
+        run: make -C overlay
+
+      - name: Package release archive
+        run: |
           mkdir -p release/atmosphere/contents/4200000000594D55
           cp sysmodule/sys-yandex.nsp release/atmosphere/contents/4200000000594D55/exefs.nsp
           cp sysmodule/toolbox.json release/atmosphere/contents/4200000000594D55/toolbox.json
