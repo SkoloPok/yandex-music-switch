@@ -53,8 +53,8 @@ void PlaylistScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
         downloadSelectedTrack();
     }
 
-    // ZR или R3 — скачать весь плейлист
-    if (kDown & (HidNpadButton_ZR | HidNpadButton_StickR)) {
+    // ZL, ZR или R3 — скачать весь плейлист
+    if (kDown & (HidNpadButton_ZL | HidNpadButton_ZR | HidNpadButton_StickR)) {
         downloadAllTracks();
     }
 
@@ -168,7 +168,7 @@ void PlaylistScreen::render() {
 
     // Подсказки
     std::vector<std::pair<std::string, std::string>> hints = {
-        {"A", "Играть"}, {"X", "Скачать"}, {"R3", "Скачать всё"}, {"Y", "Лайк"}, {"B", "Назад"}
+        {"A", "Играть"}, {"X", "Скачать"}, {"ZL", "Скачать всё"}, {"Y", "Лайк"}, {"B", "Назад"}
     };
     r->drawButtonHints(hints);
 }

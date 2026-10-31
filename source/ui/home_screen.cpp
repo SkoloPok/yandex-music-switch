@@ -85,6 +85,15 @@ void HomeScreen::handleInput(uint64_t kDown, uint64_t /*kHeld*/) {
         isDownloading_ = false;
     }
 
+    // ZL — скачать все треки
+    if (kDown & HidNpadButton_ZL) {
+        if (activeTab_ == 1) {
+            downloadAllLikedTracks();
+        } else if (activeTab_ == 0) {
+            downloadAllPlaylistTracks();
+        }
+    }
+
     // Y — выход из аккаунта (логаут)
     if (kDown & HidNpadButton_Y) {
         AuthManager::deleteToken();
@@ -169,11 +178,11 @@ void HomeScreen::render() {
     std::vector<std::pair<std::string, std::string>> hints;
     if (activeTab_ == 1) {
         hints = {
-            {"A", "Играть"}, {"ZR", "Скачать"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
+            {"A", "Играть"}, {"ZR", "Скачать"}, {"ZL", "Скачать всё"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
         };
     } else {
         hints = {
-            {"A", "Выбрать"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
+            {"A", "Выбрать"}, {"ZL", "Скачать весь"}, {"X", "Поиск"}, {"Y", "Выйти"}, {"L/R", "Вкладка"}
         };
     }
     r->drawButtonHints(hints);
@@ -199,4 +208,59 @@ void HomeScreen::loadLikedTracks() {
     likedTracks_ = app_->getAPI()->getLikedTracks();
     likedLoaded_ = true;
     loading_ = false;
+}
+
+void HomeScreen::downloadAllLikedTracks() {
+    int listSize = static_cast<int>(likedTracks_.size());
+    if (listSize == 0 || isDownloading_) return;
+
+    isDownloading_ = true;
+    int successCount = 0;
+
+    for (int i = 0; i < listSize; ++i) {
+        const auto& track = likedTracks_[i];
+        statusMessage_ = "Скачивание (" + std::to_string(i + 1) + "/" + std::to_string(listSize) + "): " + track.title;
+        app_->render();
+
+        if (app_->getAPI()->downloadTrackToFile(track)) {
+            successCount++;
+        }
+    }
+
+    statusMessage_ = "Готово! Сохранено " + std::to_string(successCount) + " из " + std::to_string(listSize) + " в /music";
+    statusTimer_ = 240;
+    isDownloading_ = false;
+}
+
+void HomeScreen::downloadAllPlaylistTracks() {
+    if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(playlists_.size()) || isDownloading_) return;
+
+    const auto& pl = playlists_[selectedIndex_];
+    statusMessage_ = "Загрузка списка треков: " + pl.title + "...";
+    isDownloading_ = true;
+    app_->render();
+
+    Playlist full = app_->getAPI()->getPlaylist(pl.uid, pl.kind);
+    int listSize = static_cast<int>(full.tracks.size());
+    if (listSize == 0) {
+        statusMessage_ = "Плейлист пуст";
+        statusTimer_ = 180;
+        isDownloading_ = false;
+        return;
+    }
+
+    int successCount = 0;
+    for (int i = 0; i < listSize; ++i) {
+        const auto& track = full.tracks[i];
+        statusMessage_ = "Скачивание (" + std::to_string(i + 1) + "/" + std::to_string(listSize) + "): " + track.title;
+        app_->render();
+
+        if (app_->getAPI()->downloadTrackToFile(track)) {
+            successCount++;
+        }
+    }
+
+    statusMessage_ = "Готово! Сохранено " + std::to_string(successCount) + " из " + std::to_string(listSize) + " в /music";
+    statusTimer_ = 240;
+    isDownloading_ = false;
 }

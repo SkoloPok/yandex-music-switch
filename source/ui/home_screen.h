@@ -21,6 +21,8 @@ public:
 private:
     void loadPlaylists();
     void loadLikedTracks();
+    void downloadAllLikedTracks();
+    void downloadAllPlaylistTracks();
 
     int activeTab_ = 0;       // 0 = Плейлисты, 1 = Мне нравится
     int selectedIndex_ = 0;
